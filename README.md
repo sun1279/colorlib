@@ -19,6 +19,53 @@ python -m http.server 8000 --bind 127.0.0.1
 
 然后访问 <http://127.0.0.1:8000/>。如果端口被占用，可更换端口号。打开页面不需要安装 Node.js、npm 包或 Calman。
 
+## 部署到 Cloudflare Workers
+
+仓库提供 `wrangler.jsonc`，使用 **Workers Static Assets**，Worker 名称为 `colorlib`。无需编译前端或编写后端 Worker 脚本，页面仍直接使用根目录中的源码。
+
+`.assetsignore` 采用允许列表，只发布页面及其依赖和页面中链接的 `analysis.md`，共 8 个文件；README、测试、部署配置、日志及临时输出不作为站点资源发布。未知路径返回 404。以后新增页面资源时，需要同步更新此允许列表。
+
+### 本地预览与部署预演
+
+先安装 Node.js（本项目使用 Node.js 24 验证），在仓库根目录运行：
+
+```sh
+npx wrangler@4 dev
+```
+
+按终端提示访问本地地址。只验证配置、不实际部署：
+
+```sh
+npx wrangler@4 deploy --dry-run
+```
+
+Wrangler 首次运行时会由 npx 下载到工具缓存；项目没有 npm 运行时依赖。
+
+### 从命令行部署
+
+```sh
+npx wrangler@4 login
+npx wrangler@4 deploy
+```
+
+使用自己的 Cloudflare 账号完成登录，部署成功后访问 Wrangler 返回的站点地址。如果需要更换 Worker 名称，修改 `wrangler.jsonc` 中的 `name`。
+
+### 连接 GitHub 自动部署
+
+在 Cloudflare 的 Workers 项目中连接 `sun1279/colorlib`，使用以下设置：
+
+| 设置 | 值 |
+| --- | --- |
+| 生产分支 | `main` |
+| 根目录 | 仓库根目录（`/`） |
+| 构建命令 | 留空 |
+| 部署命令 | `npx wrangler@4 deploy` |
+| Worker 名称 | `colorlib`，与配置文件保持一致 |
+
+不需要填写单独的前端构建输出目录，静态资源位置由 `assets.directory` 指定。GitHub 推送后的自动发布由 Cloudflare 项目的构建设置管理。
+
+参考：[静态资源配置与忽略文件](https://developers.cloudflare.com/workers/static-assets/binding/)、[Workers Builds 配置](https://developers.cloudflare.com/workers/ci-cd/builds/configuration/)。
+
 ## 支持内容
 
 | 项目 | 支持范围 |
@@ -84,6 +131,8 @@ colorlib/
 ├── patterns.js                   # 39 个内置 Pattern
 ├── export-csv.js                 # CSV 生成
 ├── analysis.md                   # 计算口径、源码映射与验证记录
+├── wrangler.jsonc                # Cloudflare Workers 静态部署配置
+├── .assetsignore                 # 站点资源允许列表
 └── tests/
     ├── color-math.test.cjs        # 计算内核与中间记录测试
     ├── export-csv.test.cjs        # CSV 格式与数据一致性测试

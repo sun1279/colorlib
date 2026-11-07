@@ -1,0 +1,10 @@
+# Publish only the page, its dependencies and the linked calculation notes.
+*
+!/index.html
+!/styles.css
+!/app.js
+!/color-math.js
+!/export-csv.js
+!/patterns.js
+!/presets.js
+!/analysis.md
