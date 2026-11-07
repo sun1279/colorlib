@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#080d17">
+  <title>Chroma Lab · Calman 色彩计算工作台</title>
+  <meta name="description" content="离线计算 Calman SDR Pattern 的目标 xyY、RGB 码值和 DeltaE 色差。">
+  <link rel="stylesheet" href="styles.css">
+  <script defer src="presets.js"></script>
+  <script defer src="patterns.js"></script>
+  <script defer src="color-math.js"></script>
+  <script defer src="export-csv.js"></script>
+  <script defer src="app.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="./index.html" aria-label="Chroma Lab 首页"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>CHROMA<span class="brand-light">LAB</span></a>
+    <div class="topbar-right"><span class="local-status"><i></i>离线计算 · 数据留在本机</span><a href="#method">计算说明 <span aria-hidden="true">↗</span></a></div>
+  </header>
+  <main>
+    <div class="page-heading"><div><p class="eyebrow">CALMAN CALCULATION SIMULATOR <span> / 01</span></p><h1>色彩计算工作台<span class="title-dot">.</span></h1><p class="intro">从信号到目标色彩，再到测量偏差。每一步，都有据可查。</p></div><span class="edition">SDR EDITION <span>v1.0</span></span></div>
+    <noscript><p class="error">此页面需要开启 JavaScript 才能计算。</p></noscript>
+    <div id="config-error" class="error" role="alert" hidden></div>
+    <section class="panel library" aria-labelledby="library-heading"><div class="library-top"><div><p class="eyebrow">PATTERN LIBRARY</p><h2 id="library-heading">选择一个色块<span id="pattern-count" class="count">39</span></h2></div><div class="library-actions"><label class="search-box"><span aria-hidden="true">⌕</span><input type="search" id="pattern-search" placeholder="搜索名称、肤色、Gray…" aria-label="搜索 Pattern"></label><button type="button" id="export-csv" class="export-button" title="按当前设置导出全部 39 个 Pattern，不受搜索和分类筛选影响" disabled><span aria-hidden="true">↓</span>导出 CSV</button></div></div><div class="filter-row" role="group" aria-label="Pattern 分类"><button type="button" class="filter active" data-filter="all" aria-pressed="true">全部</button><button type="button" class="filter" data-filter="signal" aria-pressed="false">白场与信号灰</button><button type="button" class="filter" data-filter="primary" aria-pressed="false">100% RGB / CMY</button><button type="button" class="filter" data-filter="classic" aria-pressed="false">Classic ColorChecker</button></div><div id="pattern-grid" class="pattern-grid"></div><p id="empty-library" class="field-hint" hidden>没有匹配的 Pattern，试试其他名称。</p><p id="export-status" class="export-status" role="status" hidden></p></section>
+    <div class="workbench">
+      <aside class="panel settings">
+        <div class="section-heading"><h2><span class="section-no">01</span>目标条件</h2><button type="button" id="reset" class="text-button">恢复默认</button></div>
+        <form id="config-form" novalidate>
+          <label for="gamut">目标色域 <span>COLOR SPACE</span></label>
+          <select id="gamut"><option value="rec709">Rec.709 / sRGB</option><option value="p3">P3-D65</option><option value="rec2020">Rec.2020</option><option value="adobe">Adobe RGB</option></select>
+          <label for="whitepoint">参考白点 <span>WHITE POINT</span></label>
+          <select id="whitepoint"><option value="d65">D65 · Calman</option><option value="d50">D50 · Calman</option><option value="cinema">DCI 白点</option><option value="custom">自定义 xy</option></select>
+          <div class="two-fields white-coordinates"><div><label for="white-x">白点 x</label><input id="white-x" type="number" step="0.000001" min="0" max="1" value="0.312713" readonly></div><div><label for="white-y">白点 y</label><input id="white-y" type="number" step="0.000001" min="0" max="1" value="0.329016" readonly></div></div>
+          <div class="separator"></div>
+          <label for="gamma">Gamma / EOTF</label>
+          <div class="gamma-fields"><select id="gamma"><option value="power">Power Gamma</option><option value="srgb">sRGB</option><option value="bt1886">BT.1886</option></select><input id="exponent" type="number" min="0.01" max="10" step="0.1" value="2.2" aria-label="Gamma 指数"></div>
+          <p id="gamma-hint" class="field-hint">可输入 2.2、2.4 或其他指数。</p>
+          <div class="two-fields"><div><label for="black">黑场亮度 <span>nit</span></label><input id="black" type="number" min="0" step="0.001" value="0"></div><div><label for="white">白场亮度 <span>nit</span></label><input id="white" type="number" min="0.001" step="1" value="100"></div></div>
+          <div class="separator"></div>
+          <div class="two-fields"><div><label for="depth">位深</label><select id="depth"><option value="8">8 bit</option><option value="10">10 bit</option></select></div><div><label for="range">信号范围</label><select id="range"><option value="limited">Limited</option><option value="full" selected>Full</option></select></div></div>
+          <p id="range-hint" class="field-hint">全范围 0–255</p>
+          <label class="check-row" for="round-percent"><input id="round-percent" type="checkbox" checked><span>信号百分比先取整<small>匹配 Calman 内置 Pattern 路径</small></span></label>
+          <label class="check-row" for="quantize"><input id="quantize" type="checkbox" checked><span>按实际码值计算目标<small>关闭后使用未取整的理想信号</small></span></label>
+        </form>
+        <div class="config-footer"><span class="tiny-dot"></span>输入变化时自动重新计算</div>
+      </aside>
+      <section class="results" aria-label="计算结果">
+        <div class="target-card">
+          <div class="target-copy"><div class="target-topline"><span class="eyebrow">TARGET COLOR</span><span id="target-mode" class="dark-badge">量化信号目标</span></div><p id="selected-family" class="selected-family">CLASSIC COLORCHECKER</p><h2 id="selected-name" tabindex="-1">Dark Skin</h2><p id="selected-label" class="selected-label">深肤色</p><div class="hero-values"><div><span>x</span><strong id="hero-x">—</strong></div><div><span>y</span><strong id="hero-y">—</strong></div><div><span>Y <small>cd/m²</small></span><strong id="hero-Y">—</strong></div></div></div>
+          <div class="swatch-area"><div id="hero-swatch" class="hero-swatch"></div><span id="swatch-caption">屏幕颜色仅作示意</span></div>
+        </div>
+        <div id="pattern-warnings" class="notice" role="status" hidden></div>
+        <section class="panel measurement-panel"><div class="section-heading"><h2><span class="section-no">02</span>测量与色差</h2><button type="button" id="copy-target" class="text-button">填入当前目标 <span aria-hidden="true">↙</span></button></div>
+          <div class="measurement-layout"><div class="measurement-inputs"><p class="subheading">输入实测 xyY</p><div class="three-fields"><div><label for="measure-x">x</label><input id="measure-x" type="number" step="0.000001" placeholder="0.000000" inputmode="decimal"></div><div><label for="measure-y">y</label><input id="measure-y" type="number" step="0.000001" placeholder="0.000000" inputmode="decimal"></div><div><label for="measure-Y">Y <span>nit</span></label><input id="measure-Y" type="number" step="0.001" min="0" placeholder="0.000" inputmode="decimal"></div></div><label class="check-row compact" for="compensate"><input type="checkbox" id="compensate"><span>亮度补偿<small>将目标亮度缩放到实测亮度后比较</small></span></label><p id="measure-status" class="field-hint" role="status">填入实测值后计算；不会自动生成测量数据。</p><p id="measure-lab" class="measurement-lab"></p></div>
+            <div class="delta-section"><div class="delta-topline"><span class="subheading">DELTA E</span><span id="delta-mode" class="micro-label">包含亮度误差</span></div><div class="delta-grid" aria-live="polite"><div class="delta-tile emphasis"><span>ΔE 2000</span><strong id="de2000">—</strong><small>CIEDE2000</small></div><div class="delta-tile"><span>ΔE 76</span><strong id="de76">—</strong><small>CIELAB</small></div><div class="delta-tile"><span>ΔE 94</span><strong id="de94">—</strong><small>Graphic Arts</small></div><div class="delta-tile"><span>ΔE 76</span><strong id="de76luv">—</strong><small>CIELUV</small></div></div></div>
+          </div>
+          <div id="measurement-error" class="error inline-error" role="alert" hidden></div>
+        </section>
+        <div class="details-grid">
+          <section class="panel numbers-panel"><div class="section-heading"><h2><span class="section-no">03</span>目标解析</h2><span id="signal-format" class="micro-label">8 BIT · FULL</span></div>
+            <div class="signal-strip"><span>RGB 码值</span><div><span class="channel red">R <strong id="code-r">—</strong></span><span class="channel green">G <strong id="code-g">—</strong></span><span class="channel blue">B <strong id="code-b">—</strong></span></div></div>
+            <div class="table-scroll"><table class="target-table"><caption class="sr-only">原始定义、理想信号目标、量化信号目标对照</caption><thead><tr><th>坐标 / 单位</th><th>原始定义</th><th>理想信号</th><th>量化信号</th></tr></thead><tbody id="target-table-body"></tbody></table></div>
+            <p id="definition-note" class="table-note"></p>
+          </section>
+          <section class="panel plot-panel"><div class="section-heading"><h2>xy 色度定位</h2><span class="micro-label">CIE 1931 xy</span></div><svg id="xy-chart" viewBox="0 0 320 280" role="img" aria-label="目标色域三角形、白点及目标和实测色度"></svg><div class="chart-legend"><span><i class="legend-target"></i>目标</span><span><i class="legend-measured"></i>实测</span><span><i class="legend-white"></i>参考白</span></div><p class="chart-note">色域三角形示意 · 非完整光谱轨迹图</p></section>
+        </div>
+      </section>
+    </div>
+    <details id="method" class="panel method"><summary><span><span class="section-no">↳</span>计算过程与适用范围</span><span class="summary-plus" aria-hidden="true">＋</span></summary><div class="method-content"><div class="calculation-report"><h3>当前设置下的完整计算过程</h3><p id="trace-summary" class="trace-summary" role="status"></p><div id="calculation-steps"></div></div><aside class="method-notes"><h3>适用范围与计算约定</h3><p>内置 ColorChecker 先按原始 xyYn 定义转换为线性 RGB，再以固定 Gamma 2.2 编码，按选项取整。最终目标由当前 Gamma、黑白场与实际信号重新计算。</p><p>xyY 的 Y、XYZ 使用绝对亮度；Lab / Luv 使用所选白点、白场亮度归一化。ΔE94 使用目标色彩的色度加权，kL = kC = kH = 1。亮度补偿将目标 XYZ 等比例缩放到实测 Y。</p><p>本版覆盖 SDR 矩阵色域、Power、sRGB、BT.1886。未包含 PQ / HLG、3D LUT、仪器连接及原生 Gamma 测量曲线。屏幕色块是经 sRGB 裁切的预览，不是校准信号发生器。</p><p>依据本地 CalIO 源码移植；未与运行中的 Calman 做逐项数值对照。ΔE2000 已通过 <a href="https://hajim.rochester.edu/ece/sites/gsharma/ciede2000/" target="_blank" rel="noopener noreferrer">Sharma、Wu、Dalal 的 34 组参考数据 ↗</a>验证。详细来源见同目录 <a href="analysis.md">analysis.md</a>。</p></aside></div></details>
+    <footer><span>CHROMA LAB <span class="footer-divider">/</span> Calman 计算模拟器</span><span>纯本地 · 无网络依赖 · 双精度计算</span></footer>
+  </main>
+</body>
+</html>
+
